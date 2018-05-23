@@ -1,0 +1,46 @@
+version: '2'
+
+services:
+  db:
+    restart: always
+    image: postgres:9.6
+    environment:
+      POSTGRES_USER: 'project'
+      POSTGRES_PASSWORD: ''
+    volumes:
+      - ./db/postgres:/var/lib/postgresql/data
+
+  cache:
+    restart: always
+    image: redis
+
+  manage:
+    image: 'project/projects:project-app'
+    environment:
+      - PRODUCTION=1
+    entrypoint: python3 manage.py
+    volumes:
+      - ./logs/:/app/logs/
+
+  web:
+    restart: always
+    extends:
+      service: manage
+
+    entrypoint: bash /app/docker/production/web/service.web.sh
+    links:
+      - db
+      - cache
+
+  nginx:
+    restart: always
+    image: 'project/projects:project-app'
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./media/:/app/media/
+      - ./logs/nginx/:/var/log/nginx/
+    ports:
+      - 80:80
+
+    links:
+      - web
